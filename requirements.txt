@@ -1,0 +1,12 @@
+numpy
+scipy
+scikit-learn
+matplotlib
+pandas
+opencv-python
+tensorflow
+keras
+streamlit
+pillow
+jupyter
+ipykernel
