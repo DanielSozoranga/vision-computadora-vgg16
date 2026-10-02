@@ -12,3 +12,6 @@ models/
 *.keras
 *.h5
 *.mp4
+pruebas/
+reports/dificiles/
+reports/*_marcadas/

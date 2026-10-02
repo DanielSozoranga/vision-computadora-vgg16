@@ -5,12 +5,13 @@ Ejecutar:  streamlit run app.py
 import sys
 from pathlib import Path
 
-import numpy as np
 import streamlit as st
 from PIL import Image
 
 sys.path.insert(0, str(Path(__file__).parent / "src"))
-from config import CLASS_NAMES, IMG_SIZE, MODEL_PATH, STUDENT_NAME  # noqa: E402
+from config import BACKGROUND_NAME, MODEL_PATH, STUDENT_NAME  # noqa: E402
+from inference import annotate, classify  # noqa: E402
+import vgg_layer  # noqa: E402,F401  (registra la capa VGGPreprocess para load_model)
 
 st.set_page_config(page_title=f"Clasificador: {STUDENT_NAME} vs Fondo", page_icon="🧑")
 st.title(f"¿Eres {STUDENT_NAME}?")
@@ -35,15 +36,15 @@ file = (st.file_uploader("Imagen", type=["jpg", "jpeg", "png"])
 
 if file is not None:
     img = Image.open(file).convert("RGB")
-    st.image(img, use_container_width=True)
 
-    # El modelo ya incluye el preprocesado de VGG16: se le pasa RGB en 0-255.
-    x = np.asarray(img.resize(IMG_SIZE), dtype="float32")[None]
-    probs = model.predict(x, verbose=0)[0]
-    best = int(np.argmax(probs))
+    # Se detectan todos los rostros y se clasifica cada uno; basta que uno sea el del estudiante.
+    result = classify(model, img)
+    caption = (f"{len(result['boxes'])} rostro(s) detectado(s)" if result["boxes"]
+               else "No se detectó rostro: se analizó la imagen completa")
+    st.image(annotate(img, result), caption=caption, use_container_width=True)
 
-    if CLASS_NAMES[best] == STUDENT_NAME:
-        st.success(f"Etiqueta: **{STUDENT_NAME}** ({probs[best]:.1%})")
+    if result["label"] == STUDENT_NAME:
+        st.success(f"Etiqueta: **{STUDENT_NAME}** ({result['confidence']:.1%})")
     else:
-        st.warning(f"Etiqueta: **{CLASS_NAMES[best]}** ({probs[best]:.1%})")
-    st.bar_chart({n: float(p) for n, p in zip(CLASS_NAMES, probs)})
+        st.warning(f"Etiqueta: **{result['label']}** ({result['confidence']:.1%})")
+    st.bar_chart({STUDENT_NAME: max(result["p_student"]), BACKGROUND_NAME: 1 - max(result["p_student"])})
