@@ -14,5 +14,5 @@ CLASSES_PATH = MODEL_DIR / "class_names.json"
 REPORT_DIR = ROOT / "reports"
 
 IMG_SIZE = (224, 224)
-STUDENT_THRESHOLD = 0.5   # probabilidad minima para decir que un rostro es del estudiante
+STUDENT_THRESHOLD = 0.8   # probabilidad minima para decir que un rostro es del estudiante
 CLASS_NAMES = [BACKGROUND_NAME, STUDENT_NAME]   # indice 0 = fondo, indice 1 = estudiante

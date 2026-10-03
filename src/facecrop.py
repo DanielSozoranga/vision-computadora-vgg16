@@ -64,7 +64,7 @@ def detect_faces(img, max_faces=8):
     return boxes[:max_faces]
 
 
-def crop_box(img, box, margin=0.2):
+def crop_box(img, box, margin=0.0):
     """Recorte cuadrado alrededor de la caja del rostro (con un margen)."""
     x, y, w, h = box
     cx, cy = x + w / 2, y + h / 2
@@ -72,7 +72,7 @@ def crop_box(img, box, margin=0.2):
     return img.convert("RGB").crop((int(cx - half), int(cy - half), int(cx + half), int(cy + half)))
 
 
-def crop_largest_face(img, margin=0.2):
+def crop_largest_face(img, margin=0.0):
     """Devuelve el rostro mas grande como imagen PIL cuadrada, o None si no hay rostro."""
     boxes = detect_faces(img)
     return crop_box(img, boxes[0], margin) if boxes else None
@@ -90,5 +90,9 @@ def normalize_resolution(img, size):
     small = ImageOps.fit(img.convert("RGB"), (LOW_RES, LOW_RES), Image.LANCZOS)
     # Blanco y negro + contraste normalizado: quita el color de la camara y de la luz del lugar,
     # para que el modelo aprenda la forma de la cara y no "en que cuarto se tomo la foto".
-    small = ImageOps.autocontrast(ImageOps.grayscale(small), cutoff=2).convert("RGB")
+    # CLAHE: iguala el contraste por zonas, asi un rostro a contraluz (ventana detras) o con media cara
+    # en sombra queda parecido a uno bien iluminado.
+    gray = np.asarray(ImageOps.grayscale(small))
+    gray = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(4, 4)).apply(gray)
+    small = Image.fromarray(gray).convert("RGB")
     return small.resize(size, Image.BICUBIC)
