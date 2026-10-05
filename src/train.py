@@ -41,16 +41,19 @@ def load_datasets(batch_size, val_split, seed):
     return train, val
 
 
-def build_model(lr, optimizer_name, loss):
+def build_model(lr, optimizer_name, loss, use_augment=True):
     # Aumento de datos: solo se aplica en entrenamiento.
-    augment = keras.Sequential([
-        layers.RandomFlip("horizontal"),
-        layers.RandomRotation(0.1),
-        layers.RandomZoom(0.2),
-        layers.RandomTranslation(0.1, 0.1),
-        layers.RandomBrightness(0.2),
-        layers.RandomContrast(0.2),
-    ], name="augment")
+    if use_augment:
+        augment = keras.Sequential([
+            layers.RandomFlip("horizontal"),
+            layers.RandomRotation(0.1),
+            layers.RandomZoom(0.2),
+            layers.RandomTranslation(0.1, 0.1),
+            layers.RandomBrightness(0.2),
+            layers.RandomContrast(0.2),
+        ], name="augment")
+    else:
+        augment = keras.Sequential([layers.Identity()], name="augment")   # sin aumento de datos
 
     base = VGG16(weights="imagenet", include_top=False, input_shape=IMG_SIZE + (3,))
     base.trainable = False
@@ -80,12 +83,17 @@ def main():
     ap.add_argument("--loss", default="categorical_crossentropy")
     ap.add_argument("--fine-tune-epochs", type=int, default=0,
                     help="epocas extra descongelando el bloque 5 de VGG-16 (0 = no hacerlo)")
+    ap.add_argument("--no-augment", action="store_true", help="entrenar sin aumento de datos")
+    ap.add_argument("--tag", default="",
+                    help="nombre de un experimento: guarda models/exp_<tag>.keras y NO toca el modelo principal")
     ap.add_argument("--val-split", type=float, default=0.2)
     ap.add_argument("--seed", type=int, default=42)
     args = ap.parse_args()
 
     MODEL_DIR.mkdir(exist_ok=True)
     REPORT_DIR.mkdir(exist_ok=True)
+    model_path = MODEL_DIR / f"exp_{args.tag}.keras" if args.tag else MODEL_PATH
+    curves_path = REPORT_DIR / (f"curvas_{args.tag}.png" if args.tag else "curvas_entrenamiento.png")
 
     train, val = load_datasets(args.batch_size, args.val_split, args.seed)
     train, val = train.prefetch(tf.data.AUTOTUNE), val.prefetch(tf.data.AUTOTUNE)
@@ -98,10 +106,10 @@ def main():
     def callbacks():
         return [
             keras.callbacks.EarlyStopping(monitor="val_loss", patience=8, restore_best_weights=True),
-            keras.callbacks.ModelCheckpoint(MODEL_PATH, monitor="val_loss", save_best_only=True),
+            keras.callbacks.ModelCheckpoint(model_path, monitor="val_loss", save_best_only=True),
         ]
 
-    model = build_model(args.lr, args.optimizer, args.loss)
+    model = build_model(args.lr, args.optimizer, args.loss, use_augment=not args.no_augment)
     hist = model.fit(train, validation_data=val, epochs=args.epochs,
                      class_weight=class_weight, callbacks=callbacks())
     history = {k: list(v) for k, v in hist.history.items()}
@@ -121,7 +129,7 @@ def main():
             history[k] += list(v)
 
     # Evaluacion final con el mejor modelo
-    model = keras.models.load_model(MODEL_PATH)
+    model = keras.models.load_model(model_path)
     # Se recorre val una sola vez para que imagenes y etiquetas queden en el mismo orden.
     batches = list(val)
     x_val = np.concatenate([x.numpy() for x, _ in batches])
@@ -138,8 +146,8 @@ def main():
         a.plot(history["val_" + k], label="validacion")
         a.set_title(t); a.set_xlabel("epoca"); a.legend()
     fig.tight_layout()
-    fig.savefig(REPORT_DIR / "curvas_entrenamiento.png", dpi=120)
-    print("Modelo guardado en", MODEL_PATH)
+    fig.savefig(curves_path, dpi=120)
+    print("Modelo guardado en", model_path)
 
 
 if __name__ == "__main__":

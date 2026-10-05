@@ -71,6 +71,8 @@ src/
   extract_faces.py          Saca cada rostro de fotos de grupo (para elegirlos a mano)
   train.py                  Entrenamiento
   predict_folder.py         Evalúa una carpeta de imágenes nuevas
+  compare_experiments.py    Compara los modelos de los experimentos de hiperparámetros
+run_experiments.sh          Entrena los 7 experimentos de hiperparámetros
   facecrop.py, inference.py, vgg_layer.py   Utilidades
 notebooks/                  Notebook original de la actividad
 data/raw/                   Fotos originales (no se sube a git)
@@ -141,8 +143,44 @@ tomar una foto, y dibuja un cuadro por rostro (verde = Daniel, rojo = otro) con 
 
 ## Hiperparámetros
 
-`src/train.py` acepta `--epochs`, `--batch-size`, `--optimizer {adam,sgd,rmsprop}`, `--lr`, `--loss` y
-`--fine-tune-epochs`. Las curvas de entrenamiento se guardan en `reports/curvas_entrenamiento.png`.
+`src/train.py` acepta `--epochs`, `--batch-size`, `--optimizer {adam,sgd,rmsprop}`, `--lr`, `--loss`,
+`--no-augment` y `--fine-tune-epochs`. Las curvas de entrenamiento se guardan en
+`reports/curvas_entrenamiento.png`.
+
+### Experimentos de hiperparámetros
+
+`run_experiments.sh` entrena 7 modelos cortos (10 épocas, sin fine-tuning), cambiando **una sola cosa** respecto
+a la referencia (Adam, lr 1e-4, lote 16, `categorical_crossentropy`, con aumento de datos).
+`src/compare_experiments.py` los evalúa con imágenes que no se usaron para entrenar:
+
+| Modelo | Qué cambia | Tus fotos (video) | Tus fotos (galería) | Lugares | Celebridades | Parecidos 2 | Parecidos 3 | Total |
+|---|---|---|---|---|---|---|---|---|
+| **principal** | 15 épocas + 10 de fine-tuning (entrenamiento completo) | 56/56 | 8/8 | 10/10 | 7/7 | 3/3 | 5/6 | **89/90 (99%)** |
+| rmsprop | Optimizador RMSprop | 56/56 | 8/8 | 10/10 | 6/7 | 2/3 | 5/6 | 87/90 (97%) |
+| lote32 | Tamaño de lote 32 | 56/56 | 8/8 | 10/10 | 5/7 | 2/3 | 5/6 | 86/90 (96%) |
+| epocas3 | Solo 3 épocas | 56/56 | 8/8 | 10/10 | 5/7 | 2/3 | 4/6 | 85/90 (94%) |
+| sin_aumento | Sin aumento de datos | 55/56 | 5/8 | 10/10 | 7/7 | 2/3 | 6/6 | 85/90 (94%) |
+| sgd | Optimizador SGD (lr 1e-3) | 56/56 | 8/8 | 10/10 | 4/7 | 1/3 | 5/6 | 84/90 (93%) |
+| referencia | Adam, lote 16, 10 épocas | 56/56 | 4/8 | 10/10 | 5/7 | 2/3 | 4/6 | 81/90 (90%) |
+| perdida_mse | Pérdida de error cuadrático medio | 56/56 | 8/8 | 10/10 | 3/7 | 0/3 | 2/6 | 79/90 (88%) |
+
+Conclusiones:
+
+- **La función de pérdida es lo que más importa:** `mean_squared_error` es claramente la peor (79/90), sobre todo
+  con rostros de otras personas. `categorical_crossentropy` es la adecuada para clasificación con softmax.
+- **Optimizador:** en validación, Adam fue mejor (98.1 % contra 96.7 % de RMSprop y 95.3 % de SGD), pero con
+  imágenes nuevas RMSprop quedó por encima (87/90 contra 81/90). La diferencia viene de solo 4 fotos de galería,
+  así que **no es concluyente**: con tan pocas imágenes de prueba, 4 o 5 aciertos de diferencia pueden ser ruido.
+- **Épocas:** 3 épocas (85/90) quedan por debajo de 10 (81 a 87/90) y del entrenamiento completo con fine-tuning
+  (89/90), que es el mejor modelo.
+- **Aumento de datos:** sin aumento la exactitud de validación sube a 99.5 %, pero eso es memorización de
+  fotogramas muy parecidos; con imágenes nuevas el resultado no mejora (85/90).
+- **Tamaño de lote:** 16 y 32 dan resultados parecidos.
+- El modelo **principal** es el mejor no por un hiperparámetro aislado, sino por el protocolo completo
+  (más épocas, fine-tuning del bloque 5 y búsqueda de rostros difíciles).
+
+Las conclusiones se basan en conjuntos de prueba pequeños (90 imágenes en total) y una sola corrida por
+configuración; son orientativas.
 
 ## Notas
 

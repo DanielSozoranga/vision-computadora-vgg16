@@ -41,7 +41,7 @@ if file is not None:
     result = classify(model, img)
     caption = (f"{len(result['boxes'])} rostro(s) detectado(s)" if result["boxes"]
                else "No se detectó rostro: se analizó la imagen completa")
-    st.image(annotate(img, result), caption=caption, use_container_width=True)
+    st.image(annotate(img, result), caption=caption, width="stretch")
 
     if result["label"] == STUDENT_NAME:
         st.success(f"Etiqueta: **{STUDENT_NAME}** ({result['confidence']:.1%})")
