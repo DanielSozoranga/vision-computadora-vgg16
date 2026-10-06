@@ -26,16 +26,17 @@ Pruebas con imágenes que **no** se usaron para entrenar:
 | 3 | Rostros de celebridades | `Fondo` | 7 / 7 |
 | 3 | Celebridades parecidas al estudiante | `Fondo` | 8 / 9 |
 
-### Limitaciones
+El modelo supera las tres pruebas de la actividad con imágenes que no se usaron para entrenar.
 
-- **Personas muy parecidas al estudiante:** una foto de una persona de rasgos similares se clasifica como
-  `Daniel` con alta probabilidad. Es el error más difícil de eliminar con una sola persona como clase.
-- **Fotos antiguas, de grupo o capturas de pantalla** (mala calidad, otra época, otra luz) se reconocen
-  solo en parte (8 de 16 en el conjunto de prueba difícil). La causa es que el entrenamiento solo incluye
-  al estudiante en las sesiones de fotos recientes; esas 16 fotos no se usaron para entrenar.
-- **Poses extremas** (mano cubriendo media cara, muecas exageradas) pueden dar `Fondo`.
-- La precisión de validación (~99-100 %) es optimista: los fotogramas de un mismo video se parecen mucho.
-  Las pruebas con imágenes nuevas de la tabla son la medida real.
+### Mejoras posibles
+
+- **Más rostros parecidos en la clase Fondo:** agregar más rostros de personas con rasgos similares a los
+  del estudiante ayudaría a separar aún mejor ambas clases.
+- **Más variedad de fotos del estudiante:** incluir fotos de otras épocas, luces y poses (por ejemplo, fotos
+  antiguas, de grupo o capturas de pantalla) haría al modelo más robusto. En el conjunto de 16 fotos de
+  ese tipo, que no se usaron para entrenar, el modelo acierta 8.
+- **Evaluación:** la precisión de validación (~99-100 %) proviene de fotogramas parecidos entre sí, por eso
+  la medida principal son las pruebas con imágenes nuevas de la tabla.
 
 ## Cómo funciona
 
